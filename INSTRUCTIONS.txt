@@ -1,0 +1,10 @@
+🚀 HOW TO USE THIS TOOL 🚀
+
+STEP 1: Make sure you have telmax.csv with your addresses
+STEP 2: Double-click START_HERE.py
+STEP 3: Choose option 2 from the menu to run the main tool
+STEP 4: Check execulink_results folder for your results
+
+That's it! 
+
+Questions? Read README.md for more details.

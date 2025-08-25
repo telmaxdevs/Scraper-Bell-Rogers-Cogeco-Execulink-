@@ -1,0 +1,33 @@
+📁 TELMAX EXECULINK CHECKER - FOLDER GUIDE
+==============================================
+
+🚀 TO START: Double-click "START_HERE.py" 
+   OR run: python START_HERE.py
+
+📋 MAIN FILES (what you need):
+├── START_HERE.py          ⭐ CLICK HERE TO START ⭐
+├── telmax.csv             📊 YOUR ADDRESS DATA (required)
+├── telmax_terminal.py     🖥️ Main interface (auto-started)
+├── execulink_check.py     🔧 Core processing engine
+├── validate_csv.py        ✅ CSV validation tool
+├── sample_difference.py   🎲 Data sampling tool
+├── requirements.txt       📦 Python dependencies
+├── run_execulink_check.bat 🪟 Windows batch file (alternative)
+└── README.md             📖 Detailed documentation
+
+📁 FOLDERS:
+├── execulink_results/     📈 Your results will appear here
+├── .venv/                🐍 Python virtual environment  
+├── extract_glb/          🏗️ CAD file tools (separate project)
+└── archive/              📦 Old/backup files (can ignore)
+
+🎯 WHAT TO DO:
+1. Make sure telmax.csv has your addresses
+2. Double-click START_HERE.py
+3. Follow the menu prompts
+4. Check execulink_results/ for your results
+
+❓ NEED HELP?
+- Read README.md for detailed instructions
+- CSV format issues? Use menu option 1 to validate
+- Questions? Check the troubleshooting section in README.md
