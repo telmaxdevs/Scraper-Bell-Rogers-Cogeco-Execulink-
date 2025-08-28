@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-🚀 TELMAX EXECULINK CHECKER - START HERE 🚀
+🚀 TELMA    print("🔄 The tool handles errors gracefully by skipping to next address")
+    print("📊 Processing will continue until all addresses are complete")EXECULINK CHECKER - START HERE 🚀
 
 This is the MAIN FILE to run the Telmax address processing tool.
 
@@ -35,7 +36,10 @@ def main():
     print("   - streetname (street name)")  
     print("   - town (city/town name)")
     print()
-    print("🔥 STARTING MAIN INTERFACE...")
+    print("� KILL SWITCH: Press Ctrl+C during processing to stop safely")
+    print("📊 The tool will show current results before exiting")
+    print()
+    print("�🔥 STARTING MAIN INTERFACE...")
     print()
     
     # Check if the terminal interface exists

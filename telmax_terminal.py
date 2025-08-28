@@ -110,7 +110,8 @@ def run_execulink_checker():
     print("-" * 50)
     print("This will process all addresses in telmax.csv")
     print("Progress will be shown as the script runs.")
-    print("You can press Ctrl+C to stop processing safely.")
+    print("� Errors will be handled gracefully by skipping to the next address.")
+    print("📊 The script will show current results before exiting.")
     print()
     
     # Check if CSV file is valid first
@@ -119,23 +120,58 @@ def run_execulink_checker():
         print(f"❌ CSV validation failed: {message}")
         print("Please fix your CSV file before running the checker.")
         return False
-    
+
     print(f"✅ {message}")
     print("\nStarting processing...")
     
     try:
-        subprocess.run([sys.executable, 'execulink_check.py'], check=True)
+        result = subprocess.run([sys.executable, 'execulink_check.py'], 
+                               check=True, 
+                               capture_output=False,  # Allow real-time output
+                               text=True)
         print("\n🎉 Processing completed successfully!")
         print("📁 Results saved to: execulink_results/all_results.csv")
         return True
-    except subprocess.CalledProcessError:
-        print("\n❌ Processing was interrupted or failed.")
-        print("💡 You can restart the script - it will resume from where it left off.")
+    except subprocess.CalledProcessError as e:
+        print(f"\n⚠️ Processing was interrupted or failed (exit code: {e.returncode})")
+        print("� Checking for partial results...")
+        # Show any results that were saved
+        show_partial_results()
+        print("�💡 You can restart the script - it will resume from where it left off.")
         return False
     except KeyboardInterrupt:
-        print("\n⏹️  Processing stopped by user.")
-        print("💡 You can restart the script - it will resume from where it left off.")
+        print("\n🛑 Processing stopped by user (Ctrl+C detected in terminal).")
+        print("� Checking for partial results...")
+        show_partial_results()
+        print("�💡 You can restart the script - it will resume from where it left off.")
         return False
+
+def show_partial_results():
+    """Show partial results if processing was interrupted."""
+    results_file = os.path.join("execulink_results", "all_results.csv")
+    if os.path.exists(results_file):
+        try:
+            with open(results_file, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                header = next(reader, None)
+                row_count = sum(1 for _ in reader)
+            print(f"✅ Partial results found: {row_count} addresses processed")
+            print(f"📁 Results saved in: {results_file}")
+        except Exception as e:
+            print(f"⚠️ Could not read results file: {e}")
+    else:
+        print("❌ No results file found yet.")
+    
+    # Check for backup files
+    backup_files = []
+    if os.path.exists("execulink_results"):
+        for file in os.listdir("execulink_results"):
+            if file.startswith("temp_backup_") and file.endswith(".csv"):
+                backup_files.append(file)
+    
+    if backup_files:
+        print(f"💾 Found {len(backup_files)} backup files in execulink_results/")
+        print("📋 Latest backups:", ", ".join(sorted(backup_files)[-3:]))
 
 def run_data_sampler():
     """Run the data sampling tool with user input."""
@@ -198,29 +234,46 @@ def show_results():
                 row_count = sum(1 for _ in reader)
             print(f"✅ Main results: {main_results}")
             print(f"   📊 Contains {row_count} processed addresses")
+            
+            # Show creation time
+            import datetime
+            mod_time = os.path.getmtime(main_results)
+            mod_date = datetime.datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
+            print(f"   🕐 Last updated: {mod_date}")
+            
         except Exception as e:
             print(f"⚠️  Found {main_results} but couldn't read it: {e}")
     else:
         print(f"❌ Main results file not found: {main_results}")
         print("   💡 Run the Execulink checker first")
     
-    # Check for other common output files
-    other_files = []  # Removed difference.csv since we removed comparison feature
-    for filename in other_files:
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    reader = csv.reader(f)
-                    header = next(reader)
-                    row_count = sum(1 for _ in reader)
-                print(f"✅ {filename} - {row_count} rows")
-            except:
-                print(f"✅ {filename} - file exists")
+    # Check for backup files
+    if os.path.exists(results_dir):
+        backup_files = [f for f in os.listdir(results_dir) if f.startswith('temp_backup_') and f.endswith('.csv')]
+        if backup_files:
+            print(f"💾 Backup files found: {len(backup_files)}")
+            for backup in sorted(backup_files)[-3:]:  # Show last 3 backups
+                backup_path = os.path.join(results_dir, backup)
+                try:
+                    with open(backup_path, 'r', encoding='utf-8') as f:
+                        reader = csv.reader(f)
+                        header = next(reader)
+                        row_count = sum(1 for _ in reader)
+                    print(f"   📋 {backup} - {row_count} addresses")
+                except:
+                    print(f"   📋 {backup} - file exists")
     
     # Check for sample files
     sample_files = [f for f in os.listdir('.') if f.startswith('sample_') and f.endswith('.csv')]
     if sample_files:
-        print(f"✅ Sample files: {', '.join(sample_files)}")
+        print(f"🎲 Sample files: {', '.join(sample_files)}")
+    
+    # Show CSV status
+    csv_status, csv_message = check_csv_file()
+    if csv_status:
+        print(f"📋 Input CSV status: ✅ {csv_message}")
+    else:
+        print(f"📋 Input CSV status: ❌ {csv_message}")
 
 def show_status():
     """Show current status of files and system."""
@@ -256,6 +309,8 @@ def show_menu():
     print("4. Show results and output files")
     print("5. Show system status")
     print("6. Exit")
+    print()
+    print("� Continuous processing - handles errors gracefully")
     print()
 
 def main():

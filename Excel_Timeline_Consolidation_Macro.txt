@@ -1,0 +1,253 @@
+Sub ConsolidateDataToTimeline()
+'
+' ConsolidateDataToTimeline Macro
+' Consolidates data from multiple sheets (Markham, RH, Barrie, Oakville, Burlington) 
+' into a Timeline sheet based on matching headers
+'
+    Dim wsTimeline As Worksheet
+    Dim wsSource As Worksheet
+    Dim sourceSheets As Variant
+    Dim i As Integer, j As Integer, k As Integer
+    Dim lastRowTimeline As Long, lastColTimeline As Long
+    Dim lastRowSource As Long, lastColSource As Long
+    Dim timelineHeaders As Object
+    Dim sourceHeaders As Object
+    Dim headerMatch As Boolean
+    Dim sourceHeaderText As String
+    Dim timelineHeaderText As String
+    Dim dataRange As Range
+    Dim pasteRow As Long
+    
+    ' Turn off screen updating for better performance
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    
+    ' Define source sheet names
+    sourceSheets = Array("Markham", "RH", "Barrie", "Oakville", "Burlington")
+    
+    ' Set Timeline worksheet
+    On Error Resume Next
+    Set wsTimeline = ThisWorkbook.Worksheets("Timeline")
+    On Error GoTo 0
+    
+    If wsTimeline Is Nothing Then
+        MsgBox "Timeline sheet not found! Please create a 'Timeline' sheet first.", vbCritical
+        GoTo CleanUp
+    End If
+    
+    ' Create dictionaries to store header positions
+    Set timelineHeaders = CreateObject("Scripting.Dictionary")
+    Set sourceHeaders = CreateObject("Scripting.Dictionary")
+    
+    ' Get Timeline sheet headers from row 2
+    With wsTimeline
+        lastColTimeline = .Cells(2, .Columns.Count).End(xlToLeft).Column
+        For j = 1 To lastColTimeline
+            timelineHeaderText = Trim(UCase(.Cells(2, j).Value))
+            If timelineHeaderText <> "" Then
+                timelineHeaders(timelineHeaderText) = j
+            End If
+        Next j
+    End With
+    
+    ' Process each source sheet
+    For i = 0 To UBound(sourceSheets)
+        ' Check if source sheet exists
+        On Error Resume Next
+        Set wsSource = ThisWorkbook.Worksheets(sourceSheets(i))
+        On Error GoTo 0
+        
+        If Not wsSource Is Nothing Then
+            Debug.Print "Processing sheet: " & sourceSheets(i)
+            
+            ' Clear previous source headers dictionary
+            sourceHeaders.RemoveAll
+            
+            With wsSource
+                ' Find last row and column with data
+                lastRowSource = .Cells(.Rows.Count, 1).End(xlUp).Row
+                lastColSource = .Cells(1, .Columns.Count).End(xlToLeft).Column
+                
+                ' Skip if no data (only headers)
+                If lastRowSource <= 1 Then
+                    Debug.Print "No data found in " & sourceSheets(i)
+                    GoTo NextSheet
+                End If
+                
+                ' Get source sheet headers (assuming row 1)
+                For j = 1 To lastColSource
+                    sourceHeaderText = Trim(UCase(.Cells(1, j).Value))
+                    If sourceHeaderText <> "" Then
+                        sourceHeaders(sourceHeaderText) = j
+                    End If
+                Next j
+                
+                ' Find next available row in Timeline sheet
+                pasteRow = wsTimeline.Cells(wsTimeline.Rows.Count, 1).End(xlUp).Row + 1
+                
+                ' Copy data for each matching header
+                For Each timelineHeaderText In timelineHeaders.Keys
+                    If sourceHeaders.Exists(timelineHeaderText) Then
+                        ' Headers match - copy the data
+                        Dim sourceCol As Integer
+                        Dim timelineCol As Integer
+                        
+                        sourceCol = sourceHeaders(timelineHeaderText)
+                        timelineCol = timelineHeaders(timelineHeaderText)
+                        
+                        ' Copy data from source sheet (excluding header row)
+                        If lastRowSource > 1 Then
+                            Set dataRange = .Range(.Cells(2, sourceCol), .Cells(lastRowSource, sourceCol))
+                            
+                            ' Paste to timeline sheet
+                            wsTimeline.Cells(pasteRow, timelineCol).Resize(dataRange.Rows.Count, 1).Value = dataRange.Value
+                        End If
+                    End If
+                Next timelineHeaderText
+                
+                ' Add sheet name identifier in first column (optional)
+                If timelineHeaders.Exists("SOURCE") Or timelineHeaders.Exists("SHEET") Then
+                    Dim identifierCol As Integer
+                    If timelineHeaders.Exists("SOURCE") Then
+                        identifierCol = timelineHeaders("SOURCE")
+                    ElseIf timelineHeaders.Exists("SHEET") Then
+                        identifierCol = timelineHeaders("SHEET")
+                    End If
+                    
+                    If identifierCol > 0 And lastRowSource > 1 Then
+                        wsTimeline.Range(wsTimeline.Cells(pasteRow, identifierCol), _
+                                       wsTimeline.Cells(pasteRow + lastRowSource - 2, identifierCol)).Value = sourceSheets(i)
+                    End If
+                End If
+            End With
+        Else
+            Debug.Print "Sheet not found: " & sourceSheets(i)
+        End If
+        
+NextSheet:
+        Set wsSource = Nothing
+    Next i
+    
+    ' Format the Timeline sheet
+    With wsTimeline
+        ' AutoFit columns
+        .Columns.AutoFit
+        
+        ' Add borders to data range
+        Dim dataEndRow As Long
+        dataEndRow = .Cells(.Rows.Count, 1).End(xlUp).Row
+        If dataEndRow > 2 Then
+            .Range(.Cells(2, 1), .Cells(dataEndRow, lastColTimeline)).Borders.LineStyle = xlContinuous
+        End If
+        
+        ' Bold the header row
+        .Rows(2).Font.Bold = True
+        .Rows(2).Interior.Color = RGB(220, 220, 220)
+    End With
+    
+    MsgBox "Data consolidation completed successfully!" & vbCrLf & _
+           "Data from sheets: " & Join(sourceSheets, ", ") & vbCrLf & _
+           "has been consolidated into the Timeline sheet.", vbInformation
+    
+CleanUp:
+    ' Clean up
+    Set timelineHeaders = Nothing
+    Set sourceHeaders = Nothing
+    Set wsTimeline = Nothing
+    Set wsSource = Nothing
+    
+    ' Restore Excel settings
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+End Sub
+
+Sub CreateTimelineTemplate()
+'
+' CreateTimelineTemplate Macro
+' Creates a basic Timeline sheet template with common headers
+'
+    Dim wsTimeline As Worksheet
+    Dim commonHeaders As Variant
+    Dim i As Integer
+    
+    ' Check if Timeline sheet already exists
+    On Error Resume Next
+    Set wsTimeline = ThisWorkbook.Worksheets("Timeline")
+    On Error GoTo 0
+    
+    If Not wsTimeline Is Nothing Then
+        If MsgBox("Timeline sheet already exists. Do you want to overwrite it?", vbYesNo + vbQuestion) = vbNo Then
+            Exit Sub
+        Else
+            Application.DisplayAlerts = False
+            wsTimeline.Delete
+            Application.DisplayAlerts = True
+        End If
+    End If
+    
+    ' Create new Timeline sheet
+    Set wsTimeline = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
+    wsTimeline.Name = "Timeline"
+    
+    ' Define common headers (modify these based on your actual headers)
+    commonHeaders = Array("Source", "Date", "Time", "Activity", "Description", "Status", "Priority", "Assigned To", "Notes")
+    
+    ' Add headers to row 2
+    For i = 0 To UBound(commonHeaders)
+        wsTimeline.Cells(2, i + 1).Value = commonHeaders(i)
+    Next i
+    
+    ' Format headers
+    With wsTimeline.Range(wsTimeline.Cells(2, 1), wsTimeline.Cells(2, UBound(commonHeaders) + 1))
+        .Font.Bold = True
+        .Interior.Color = RGB(220, 220, 220)
+        .Borders.LineStyle = xlContinuous
+    End With
+    
+    ' AutoFit columns
+    wsTimeline.Columns.AutoFit
+    
+    ' Add title in row 1
+    wsTimeline.Cells(1, 1).Value = "CONSOLIDATED TIMELINE DATA"
+    wsTimeline.Cells(1, 1).Font.Bold = True
+    wsTimeline.Cells(1, 1).Font.Size = 14
+    
+    MsgBox "Timeline template created successfully!" & vbCrLf & _
+           "Headers are in row 2. Modify them as needed before running the consolidation macro.", vbInformation
+End Sub
+
+Sub ClearTimelineData()
+'
+' ClearTimelineData Macro
+' Clears all data from Timeline sheet but keeps headers
+'
+    Dim wsTimeline As Worksheet
+    Dim lastRow As Long
+    Dim lastCol As Long
+    
+    On Error Resume Next
+    Set wsTimeline = ThisWorkbook.Worksheets("Timeline")
+    On Error GoTo 0
+    
+    If wsTimeline Is Nothing Then
+        MsgBox "Timeline sheet not found!", vbCritical
+        Exit Sub
+    End If
+    
+    If MsgBox("Are you sure you want to clear all data from the Timeline sheet?" & vbCrLf & _
+              "(Headers in row 2 will be preserved)", vbYesNo + vbQuestion) = vbNo Then
+        Exit Sub
+    End If
+    
+    With wsTimeline
+        lastRow = .Cells(.Rows.Count, 1).End(xlUp).Row
+        lastCol = .Cells(2, .Columns.Count).End(xlToLeft).Column
+        
+        ' Clear data starting from row 3 (preserve headers in row 2)
+        If lastRow > 2 Then
+            .Range(.Cells(3, 1), .Cells(lastRow, lastCol)).Clear
+        End If
+    End With
+    
+    MsgBox "Timeline data cleared successfully! Headers preserved.", vbInformation
+End Sub
